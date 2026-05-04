@@ -1,30 +1,9 @@
-name: Daily Investment Manager
-
-on:
-  schedule:
-    - cron: '0 10 * * 1-5'
-  workflow_dispatch: 
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.9'
-
-      - name: Install dependencies
-        run: pip install yfinance
-
-      - name: Run Manager Script
+- name: Run Manager Script
         env:
           NAVER_ID: ${{ secrets.NAVER_ID }}
           NAVER_PW: ${{ secrets.NAVER_PW }}
-          # 파이썬 3.7+에서 지원하는 강력한 UTF-8 강제 모드
-          PYTHONUTF8: "1"
-          PYTHONIOENCODING: "utf-8"
+          # 아래 3줄이 핵심입니다. 서버를 '영어 전용'에서 '멀티 언어' 모드로 바꿉니다.
+          PYTHONIOENCODING: utf-8
+          LANG: C.UTF-8
+          LC_ALL: C.UTF-8
         run: python investment_manager.py
