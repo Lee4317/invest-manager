@@ -10,10 +10,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        # v3에서 v4로 업데이트 (Node.js 최신 버전 지원)
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        # v4에서 v5로 업데이트 (Node.js 최신 버전 지원)
+        uses: actions/setup-python@v5
         with:
           python-version: '3.9'
 
@@ -22,6 +24,8 @@ jobs:
 
       - name: Run Manager Script
         env:
-          EMAIL_USER: ${{ secrets.EMAIL_USER }}
-          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+          # 네이버 ID와 PW를 GitHub Secrets에 등록했다면 아래와 같이 연결됩니다.
+          # 직접 코드에 적으셨다면 이 부분은 무시해도 되지만, 보안을 위해 권장합니다.
+          NAVER_ID: ${{ secrets.NAVER_ID }}
+          NAVER_PW: ${{ secrets.NAVER_PW }}
         run: python investment_manager.py
