@@ -1,8 +1,29 @@
-- name: Run Manager Script
+name: Daily Investment Manager
+
+on:
+  schedule:
+    - cron: '0 10 * * 1-5'
+  workflow_dispatch: 
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install yfinance
+
+      - name: Run Manager Script
         env:
           NAVER_ID: ${{ secrets.NAVER_ID }}
           NAVER_PW: ${{ secrets.NAVER_PW }}
-          # [필수] 파이썬과 시스템 언어를 UTF-8로 강제 고정
           PYTHONUTF8: "1"
           PYTHONIOENCODING: "utf-8"
           LANG: "C.UTF-8"
