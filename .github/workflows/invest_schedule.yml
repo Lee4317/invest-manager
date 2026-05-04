@@ -1,0 +1,27 @@
+name: Daily Investment Manager
+
+on:
+  schedule:
+    - cron: '0 10 * * 1-5' # 월-금 한국시간 오후 7시 (UTC 10시)
+  workflow_dispatch: # 수동 실행 버튼 추가
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: pip install yfinance
+
+      - name: Run Manager Script
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+        run: python investment_manager.py
