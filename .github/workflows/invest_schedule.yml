@@ -15,7 +15,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.11' # 최신 파이썬 버전 사용
 
       - name: Install dependencies
         run: pip install yfinance
@@ -24,7 +24,9 @@ jobs:
         env:
           NAVER_ID: ${{ secrets.NAVER_ID }}
           NAVER_PW: ${{ secrets.NAVER_PW }}
+          # [핵심] 서버 환경을 UTF-8(한글 지원)로 강제 설정
           PYTHONUTF8: "1"
           PYTHONIOENCODING: "utf-8"
-          LANG: "C.UTF-8"
+          LANG: "ko_KR.UTF-8"
+          LC_ALL: "ko_KR.UTF-8"
         run: python investment_manager.py
