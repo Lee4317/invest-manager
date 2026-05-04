@@ -4,10 +4,10 @@ import smtplib
 import os
 from email.mime.text import MIMEText
 from email.header import Header
+from email.utils import formataddr # 안전한 주소 형식을 위해 추가
 
 def get_advice(total_budget=550):
     try:
-        # 1. 데이터 수집 및 RSI 계산
         ticker = yf.Ticker("TQQQ")
         df = ticker.history(period="30d")
         if df.empty: return None
@@ -19,13 +19,11 @@ def get_advice(total_budget=550):
         rs = gain / loss
         rsi = (100 - (100 / (1 + rs))).iloc[-1]
 
-        # 2. 날짜 및 일정 관리
         today = datetime.date.today()
         cpi_date = datetime.date(2026, 5, 12)
         sell_date = datetime.date(2026, 5, 26)
         days_left = (sell_date - today).days
 
-        # 3. 투자 전략 로직
         if today < cpi_date:
             phase, base_amount = "1단계: CPI 전 소액 매수", total_budget * 0.04
         elif today == cpi_date:
@@ -33,7 +31,6 @@ def get_advice(total_budget=550):
         else:
             phase, base_amount = "2단계: 마무리 투입기", total_budget * 0.08
 
-        # RSI 기반 행동 보정
         if rsi > 70:
             action, final_amount = "🚨 과열! 오늘 매수 쉼", 0
         elif rsi < 35:
@@ -41,7 +38,6 @@ def get_advice(total_budget=550):
         else:
             action, final_amount = "✅ 정상 매수 진행", base_amount
 
-        # 목표일 임박 시
         if 0 < days_left <= 3:
             action, final_amount = "🏁 전량 투입 단계", base_amount * 1.5
 
@@ -54,7 +50,6 @@ def get_advice(total_budget=550):
         return None
 
 def send_naver_email(advice):
-    # GitHub Secrets와 연결된 환경변수 읽기
     naver_id = os.environ.get('NAVER_ID')
     naver_pw = os.environ.get('NAVER_PW')
     
@@ -66,7 +61,7 @@ def send_naver_email(advice):
     smtp_port = 465
     today_str = datetime.date.today().strftime("%Y-%m-%d")
 
-    # 메일 본문 구성
+    # 메일 본문 구성 (한글이 깨지지 않도록 설정)
     msg_content = f"""
 안녕하세요! $550 투자 매니저입니다.
 {today_str} 오늘의 행동 지침을 전달합니다.
@@ -81,24 +76,25 @@ def send_naver_email(advice):
 2. 시장 열기(RSI): {advice['rsi']}
 3. 현재 TQQQ 가격: ${advice['price']}
 4. 목표일(5/26)까지 {advice['days']}일 남았습니다.
-
-* 매니저의 한마디:
-전체 자산의 33%가 걸린 중요한 투자입니다. 
-밤 10시 30분, 기계적으로 매수 주문을 넣어주세요!
     """
 
-    msg = MIMEText(msg_content, _charset='utf-8')
+    # MIMEText 생성 시 'utf-8' 명시
+    msg = MIMEText(msg_content, 'plain', 'utf-8')
+    
+    # 제목 인코딩 에러 방지 (Header 클래스 사용)
     msg['Subject'] = Header(f"[{today_str}] 오늘의 $550 투자 지침 보고서", 'utf-8')
+    
+    # 보낸 사람/받는 사람 설정 (이메일 주소만 깔끔하게 전달)
     msg['From'] = naver_id
     msg['To'] = naver_id 
 
     try:
         with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
             server.login(naver_id, naver_pw)
-            server.sendmail(naver_id, naver_id, msg.as_string())
+            server.sendmail(naver_id, [naver_id], msg.as_string())
         print(f"✅ [{today_str}] 메일 발송 성공!")
     except Exception as e:
-        print(f"❌ SMTP 발송 오류: {e}")
+        print(f"❌ 오류: 메일 발송에 실패했습니다. ({e})")
 
 if __name__ == "__main__":
     result = get_advice()
