@@ -2,8 +2,8 @@
         env:
           NAVER_ID: ${{ secrets.NAVER_ID }}
           NAVER_PW: ${{ secrets.NAVER_PW }}
-          # 아래 3줄이 핵심입니다. 서버를 '영어 전용'에서 '멀티 언어' 모드로 바꿉니다.
-          PYTHONIOENCODING: utf-8
-          LANG: C.UTF-8
-          LC_ALL: C.UTF-8
+          # [필수] 파이썬과 시스템 언어를 UTF-8로 강제 고정
+          PYTHONUTF8: "1"
+          PYTHONIOENCODING: "utf-8"
+          LANG: "C.UTF-8"
         run: python investment_manager.py
