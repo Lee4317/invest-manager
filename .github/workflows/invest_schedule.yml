@@ -24,8 +24,7 @@ jobs:
         env:
           NAVER_ID: ${{ secrets.NAVER_ID }}
           NAVER_PW: ${{ secrets.NAVER_PW }}
-          # [핵심] 서버 환경 자체를 UTF-8로 강제 설정
-          PYTHONIOENCODING: utf-8
-          LANG: ko_KR.UTF-8
-          LC_ALL: ko_KR.UTF-8
+          # 파이썬 3.7+에서 지원하는 강력한 UTF-8 강제 모드
+          PYTHONUTF8: "1"
+          PYTHONIOENCODING: "utf-8"
         run: python investment_manager.py
