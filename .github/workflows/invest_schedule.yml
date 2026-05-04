@@ -26,6 +26,6 @@ jobs:
         env:
           # 네이버 ID와 PW를 GitHub Secrets에 등록했다면 아래와 같이 연결됩니다.
           # 직접 코드에 적으셨다면 이 부분은 무시해도 되지만, 보안을 위해 권장합니다.
-          NAVER_ID: ${{ secrets.NAVER_ID }}
-          NAVER_PW: ${{ secrets.NAVER_PW }}
+          NAVER_ID: ${{ secrets.NAVER_USER_ID }}
+          NAVER_PW: ${{ secrets.NAVER_USER_PW }}
         run: python investment_manager.py
