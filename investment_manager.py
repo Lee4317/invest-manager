@@ -3,15 +3,10 @@ import os
 import datetime
 import yfinance as yf
 import smtplib
-from email.mime.text import MIMEText
-from email.header import Header
+from email.message import EmailMessage
 
-# 1. 시스템 출력 인코딩 강제 설정 (한글 깨짐 방지)
-try:
-    sys.stdout.reconfigure(encoding='utf-8')
-except:
-    import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.detach(), encoding='utf-8')
+# 시스템 출력 설정
+sys.stdout.reconfigure(encoding='utf-8')
 
 def get_advice():
     try:
@@ -19,12 +14,11 @@ def get_advice():
         df = ticker.history(period="30d")
         if df.empty: return None
         
-        # RSI 계산
+        # RSI calculation
         delta = df['Close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        rs = gain / loss
-        rsi = (100 - (100 / (1 + rs))).iloc[-1]
+        rsi = (100 - (100 / (1 + (gain / loss)))).iloc[-1]
         
         return {
             "action": "BUY" if rsi < 50 else "HOLD",
@@ -32,40 +26,32 @@ def get_advice():
             "price": round(df['Close'].iloc[-1], 2)
         }
     except:
-        return {"action": "CHECK", "rsi": 0, "price": 0}
+        return None
 
 def send_naver_email(advice):
-    # 2. Secrets 로드 및 공백 제거
-    naver_id = os.environ.get('NAVER_ID', '').strip()
-    naver_pw = os.environ.get('NAVER_PW', '').strip()
+    # ID/PW 가져오기
+    n_id = os.environ.get('NAVER_ID', '').strip()
+    n_pw = os.environ.get('NAVER_PW', '').strip()
     
-    if not naver_id or not naver_pw:
-        print("❌ Error: Secrets are empty.")
-        return
-
     today_str = datetime.date.today().strftime("%Y-%m-%d")
 
-    # 3. 메일 구성 (최대한 단순한 영문 위주)
-    msg = MIMEText(f"RSI: {advice['rsi']}\nPrice: ${advice['price']}\nAction: {advice['action']}", 'plain', 'utf-8')
-    msg['Subject'] = Header(f"Invest Report {today_str}", 'utf-8')
-    msg['From'] = naver_id
-    msg['To'] = naver_id
+    # [중요] 한글을 1글자도 포함하지 않은 영문 메시지
+    msg = EmailMessage()
+    msg['Subject'] = f"Invest Report {today_str}"
+    msg['From'] = n_id
+    msg['To'] = n_id
+    msg.set_content(f"Action: {advice['action']}\nRSI: {advice['rsi']}\nPrice: ${advice['price']}")
 
     try:
-        # 4. SMTP 서버 연결
-        server = smtplib.SMTP_SSL("smtp.naver.com", 465, timeout=20)
-        
-        # [핵심 해결책] 아이디와 비번을 '글자'가 아닌 '바이트 데이터'로 강제 변환하여 로그인
-        # 이렇게 하면 position 1-5 에러를 일으키는 인코딩 과정을 건너뜁니다.
-        server.login(naver_id.encode('utf-8'), naver_pw.encode('utf-8'))
-        
-        server.sendmail(naver_id, [naver_id], msg.as_string())
-        server.quit()
-        print(f"✅ Success: Mail sent to {naver_id}")
+        with smtplib.SMTP_SSL("smtp.naver.com", 465) as server:
+            # 문자열을 명시적으로 영어(ascii)로 인코딩해서 전송
+            server.login(n_id.encode('ascii').decode('ascii'), n_pw.encode('ascii').decode('ascii'))
+            server.send_message(msg)
+        print("Success")
     except Exception as e:
-        # 에러 발생 시 상세 내용을 안전하게 출력
-        print(f"❌ Error Detail: {repr(e)}")
+        print(f"Error: {str(e)}")
 
 if __name__ == "__main__":
     res = get_advice()
-    send_naver_email(res)
+    if res:
+        send_naver_email(res)
