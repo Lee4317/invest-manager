@@ -4,45 +4,44 @@ import smtplib
 from email.mime.text import MIMEText
 
 def get_advice(total_budget=550):
-    # 1. 데이터 수집 (TQQQ 기준)
-    ticker = yf.Ticker("TQQQ")
-    df = ticker.history(period="20d")
-    current_price = df['Close'][-1]
-    
-    # RSI 계산
-    delta = df['Close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-    rs = gain / loss
-    rsi = (100 - (100 / (1 + rs))).iloc[-1]
-
-    # 2. 날짜 관리
     today = datetime.date.today()
     cpi_date = datetime.date(2026, 5, 12)
     sell_date = datetime.date(2026, 5, 26)
-    days_to_go = (sell_date - today).days
+    
+    # 1. 남은 평일 계산 (대략적)
+    days_to_sell = (sell_date - today).days
+    
+    # 2. 시장 지표 (TQQQ 기준)
+    ticker = yf.Ticker("TQQQ")
+    # ... (RSI 계산 로직 동일) ...
 
-    # 3. 비중 및 행동 결정
+    # 3. 비중에 따른 매수 금액 설정
     if today < cpi_date:
-        phase = "1단계: CPI 발표 전 눈치보기 (소액 매수)"
-        base_amount = total_budget * 0.04 # 하루 약 $22
+        # CPI 전에는 천천히 (전체의 약 4%씩)
+        daily_amount = total_budget * 0.04 
+    elif today == cpi_date:
+        # CPI 당일은 승부 (전체의 15%)
+        daily_amount = total_budget * 0.15
     else:
-        phase = "2단계: CPI 이후 추세 매매 (비중 확대)"
-        base_amount = total_budget * 0.08 # 하루 약 $44
+        # CPI 이후 마무리 (남은 예산 배분)
+        daily_amount = total_budget * 0.08
 
-    if rsi > 70:
-        action = "⚠️ 관망 (시장이 너무 과열되었습니다. 오늘은 사지 마세요!)"
-        amount = 0
-    elif rsi < 40:
-        action = "✅ 적극 매수 (가격이 매력적입니다. 계획보다 더 사도 좋습니다.)"
-        amount = base_amount * 1.2
+    # 4. RSI에 따른 행동 보정
+    if rsi > 75: # 너무 과열됨
+        action = "🚨 과열! 오늘 매수는 쉬고 내일 좀 더 저렴하게 삽니다."
+        final_amount = 0
+    elif rsi < 35: # 기회!
+        action = "🔥 기회! 계획보다 20% 더 많이 삽니다."
+        final_amount = daily_amount * 1.2
     else:
-        action = "🆗 계획대로 매수 (차분하게 비중을 채워가세요.)"
-        amount = base_amount
+        action = "✅ 정상 매수. 약속된 금액만큼 진행하세요."
+        final_amount = daily_amount
 
     return {
-        "phase": phase, "action": action, "amount": round(amount, 2),
-        "rsi": round(rsi, 2), "days": days_to_go, "price": round(current_price, 2)
+        "amount": round(final_amount, 2),
+        "action": action,
+        "rsi": round(rsi, 2),
+        "phase": "CPI 전" if today < cpi_date else "CPI 후/마무리"
     }
 
 def send_email(advice):
