@@ -2,20 +2,19 @@ name: Daily Investment Manager
 
 on:
   schedule:
-    - cron: '0 10 * * 1-5' # 월-금 한국시간 오후 7시 (UTC 10시)
-  workflow_dispatch: # 수동 실행 버튼 추가
+    # 한국 시간 오후 7시 (월~금)
+    - cron: '0 10 * * 1-5'
+  workflow_dispatch: # 수동 실행 버튼
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        # v3에서 v4로 업데이트 (Node.js 최신 버전 지원)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4 # Node.js 24 대응
 
       - name: Set up Python
-        # v4에서 v5로 업데이트 (Node.js 최신 버전 지원)
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5 # Node.js 24 대응
         with:
           python-version: '3.9'
 
@@ -24,8 +23,7 @@ jobs:
 
       - name: Run Manager Script
         env:
-          # 네이버 ID와 PW를 GitHub Secrets에 등록했다면 아래와 같이 연결됩니다.
-          # 직접 코드에 적으셨다면 이 부분은 무시해도 되지만, 보안을 위해 권장합니다.
+          # GitHub Secrets의 이름과 일치시켰습니다.
           NAVER_ID: ${{ secrets.NAVER_ID }}
           NAVER_PW: ${{ secrets.NAVER_PW }}
         run: python investment_manager.py
