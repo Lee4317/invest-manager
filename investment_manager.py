@@ -4,7 +4,6 @@ import smtplib
 import os
 from email.mime.text import MIMEText
 from email.header import Header
-from email.utils import formataddr # 안전한 주소 형식을 위해 추가
 
 def get_advice(total_budget=550):
     try:
@@ -61,7 +60,6 @@ def send_naver_email(advice):
     smtp_port = 465
     today_str = datetime.date.today().strftime("%Y-%m-%d")
 
-    # 메일 본문 구성 (한글이 깨지지 않도록 설정)
     msg_content = f"""
 안녕하세요! $550 투자 매니저입니다.
 {today_str} 오늘의 행동 지침을 전달합니다.
@@ -78,19 +76,18 @@ def send_naver_email(advice):
 4. 목표일(5/26)까지 {advice['days']}일 남았습니다.
     """
 
-    # MIMEText 생성 시 'utf-8' 명시
+    # 1. 본문 인코딩 설정 ('utf-8' 명시)
     msg = MIMEText(msg_content, 'plain', 'utf-8')
     
-    # 제목 인코딩 에러 방지 (Header 클래스 사용)
+    # 2. 제목 인코딩 설정 (Header 클래스로 utf-8 포장)
     msg['Subject'] = Header(f"[{today_str}] 오늘의 $550 투자 지침 보고서", 'utf-8')
-    
-    # 보낸 사람/받는 사람 설정 (이메일 주소만 깔끔하게 전달)
     msg['From'] = naver_id
     msg['To'] = naver_id 
 
     try:
         with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
             server.login(naver_id, naver_pw)
+            # 3. 발송 시 메시지를 문자열로 변환하여 전송
             server.sendmail(naver_id, [naver_id], msg.as_string())
         print(f"✅ [{today_str}] 메일 발송 성공!")
     except Exception as e:
