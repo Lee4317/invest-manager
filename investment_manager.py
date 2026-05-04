@@ -3,10 +3,13 @@ import os
 import datetime
 import yfinance as yf
 import smtplib
-from email.message import EmailMessage
+from email.mime.text import MIMEText
+from email.header import Header
 
 # 시스템 출력 인코딩 강제 설정
-sys.stdout.reconfigure(encoding='utf-8')
+if sys.stdout.encoding != 'utf-8':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.detach(), encoding='utf-8')
 
 def get_advice(total_budget=550):
     try:
@@ -27,21 +30,23 @@ def get_advice(total_budget=550):
         days_left = (sell_date - today).days
 
         if rsi > 70:
-            action, final_amount = "매수 쉬어감", 0
+            action = "Overheated - Wait"
+            amount = 0
         elif rsi < 35:
-            action, final_amount = "추가 매수 기회", total_budget * 0.1
+            action = "Opportunity - Buy More"
+            amount = total_budget * 0.1
         else:
-            action, final_amount = "정상 매수 진행", total_budget * 0.05
+            action = "Normal Buy"
+            amount = total_budget * 0.05
 
         return {
-            "action": action, "amount": round(final_amount, 2),
+            "action": action, "amount": round(amount, 2),
             "rsi": round(rsi, 2), "days": days_left, "price": round(current_price, 2)
         }
     except Exception:
         return None
 
 def send_naver_email(advice):
-    # Secrets 값 가져오기 (공백 제거)
     naver_id = os.environ.get('NAVER_ID', '').strip()
     naver_pw = os.environ.get('NAVER_PW', '').strip()
     
@@ -51,31 +56,35 @@ def send_naver_email(advice):
 
     today_str = datetime.date.today().strftime("%Y-%m-%d")
 
-    # EmailMessage 사용 (한글 인코딩에 가장 강력함)
-    msg = EmailMessage()
-    msg['Subject'] = f"[Investment] {today_str} Report"
+    # [핵심] 제목과 본문을 Header와 MIMEText로 각각 UTF-8 처리
+    subject = f"[{today_str}] Investment Guide Report"
+    body = f"""
+Today's Action: {advice['action']}
+Amount: ${advice['amount']}
+Market RSI: {advice['rsi']}
+Current Price: ${advice['price']}
+Days Left: {advice['days']}
+    """
+
+    # 메일 객체 생성 (전통적인 MIMEText 방식이 때로는 가장 안전합니다)
+    msg = MIMEText(body, 'plain', 'utf-8')
+    msg['Subject'] = Header(subject, 'utf-8')
     msg['From'] = naver_id
     msg['To'] = naver_id
-    
-    # 본문 구성 (한글 포함)
-    content = f"""
-오늘의 지침: {advice['action']}
-매수금액: ${advice['amount']}
-현재 RSI: {advice['rsi']}
-남은기간: {advice['days']}일
-    """
-    msg.set_content(content, charset='utf-8')
 
     try:
-        with smtplib.SMTP_SSL("smtp.naver.com", 465) as server:
+        # SMTP 서버 연결 시 타임아웃 추가
+        with smtplib.SMTP_SSL("smtp.naver.com", 465, timeout=20) as server:
             server.login(naver_id, naver_pw)
-            server.send_message(msg)
+            server.sendmail(naver_id, [naver_id], msg.as_string())
         print(f"Success: Mail sent to {naver_id}")
     except Exception as e:
-        # 에러 메시지 출력 시에도 인코딩 에러가 안 나도록 처리
-        print(f"Error: {str(e).encode('utf-8', 'ignore')}")
+        # 에러 메시지에서 ASCII 에러가 나는 것을 방지하기 위해 repr 사용
+        print(f"Error occurred: {repr(e)}")
 
 if __name__ == "__main__":
     res = get_advice()
     if res:
         send_naver_email(res)
+    else:
+        print("Error: Could not generate advice")
