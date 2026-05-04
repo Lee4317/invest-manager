@@ -36,9 +36,6 @@ def get_advice(total_budget=550):
         else:
             action, final_amount = "✅ 정상 매수 진행", base_amount
 
-        if 0 < days_left <= 3:
-            action, final_amount = "🏁 전량 투입 단계", base_amount * 1.5
-
         return {
             "phase": phase, "action": action, "amount": round(final_amount, 2),
             "rsi": round(rsi, 2), "days": days_left, "price": round(current_price, 2)
@@ -48,19 +45,26 @@ def get_advice(total_budget=550):
         return None
 
 def send_naver_email(advice):
-    naver_id = os.environ.get('NAVER_ID')
-    naver_pw = os.environ.get('NAVER_PW')
+    # 환경변수에서 값을 가져온 뒤, 혹시 모를 공백을 완전히 제거합니다.
+    naver_id = os.environ.get('NAVER_ID', '').strip()
+    naver_pw = os.environ.get('NAVER_PW', '').strip()
     
     if not naver_id or not naver_pw:
-        print("❌ 오류: NAVER_ID 또는 NAVER_PW 환경변수를 찾을 수 없습니다.")
+        print("❌ 오류: NAVER_ID 또는 NAVER_PW 환경변수가 비어있습니다.")
         return
 
     smtp_server = "smtp.naver.com"
     smtp_port = 465
     today_str = datetime.date.today().strftime("%Y-%m-%d")
 
+    # 이메일 메시지 구성
+    msg = EmailMessage()
+    msg['Subject'] = f"[{today_str}] 오늘의 $550 투자 지침 보고서"
+    msg['From'] = naver_id
+    msg['To'] = naver_id
+    
     msg_content = f"""안녕하세요! $550 투자 매니저입니다.
-{today_str} 오늘의 행동 지침을 전달합니다.
+{today_str} 오늘의 행동 지침입니다.
 
 --------------------------------------------------
 [오늘의 행동] {advice['action']}
@@ -71,20 +75,17 @@ def send_naver_email(advice):
 1. 투자 단계: {advice['phase']}
 2. 시장 열기(RSI): {advice['rsi']}
 3. 현재 TQQQ 가격: ${advice['price']}
-4. 목표일(5/26)까지 {advice['days']}일 남았습니다.
+4. 목표일(5/26)까지 {advice['days']}일 남음
 """
-
-    # 1. 구형 MIMEText 대신 최신 EmailMessage 객체 사용 (한글 깨짐/오류 완벽 차단)
-    msg = EmailMessage()
     msg.set_content(msg_content)
-    msg['Subject'] = f"[{today_str}] 오늘의 $550 투자 지침 보고서"
-    msg['From'] = naver_id
-    msg['To'] = naver_id
 
     try:
+        # SMTP 접속 및 발송
         with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
+            # .encode('utf-8').decode('ascii') 같은 복잡한 과정 없이 
+            # 최신 파이썬의 smtplib은 내부적으로 처리하지만, 
+            # 명시적으로 오류를 잡기 위해 아래와 같이 로그인합니다.
             server.login(naver_id, naver_pw)
-            # 2. 구형 sendmail 대신 안전한 send_message 사용
             server.send_message(msg)
         print(f"✅ [{today_str}] 메일 발송 성공!")
     except Exception as e:
